@@ -54,11 +54,11 @@ end
 	Useful for gil farming or gil-tossing Samurai
 --]]
 function printGil()
-	curGil = memory.readword(0x200e0d4);
+	curGil = memory.readdword(0x200e0d4);
 	rollDisplayValue(curGil, displayGil, 1);
 	
-	gui.text(212, 0, "$"..string.format("%06d", displayGil[1]), colorZeroes, t_borderColor); -- leading zeroes
-	gui.text(212, 0, "$"..string.format("%6d", displayGil[1]), colorTotal, borderColor);	-- total
+	gui.text(208, 0, "$"..string.format("%07d", displayGil[1]), colorZeroes, t_borderColor); -- leading zeroes
+	gui.text(208, 0, "$"..string.format("%7d", displayGil[1]), colorTotal, borderColor);	-- total
 end
 
 function drawHealthBars(resetDisplay)
