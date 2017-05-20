@@ -6,6 +6,7 @@
 --]]
 
 displayHealth = {-1,-1,-1,-1,-1,-1,-1,-1};
+displayGil = {0};
 xOffset = 0;
 
 -- Solid text colors
@@ -25,10 +26,6 @@ t_colorHurt 	= 0xaa000080;
  --colorZeroes  = 0x80808080;
 -- colorTotal 	= 0xffcc0080;
 t_colorYellow = 0xffff0080;
-
-lastInBattle = false;
-
-displayGil = {0};
 
 --[[
 	Rolls the display value up/down towards the actual value.
@@ -79,7 +76,6 @@ function drawHealthBars(resetDisplay)
 		-- rolling health counter
 		if (resetDisplay) then
 			displayHealth[i] = 0;
-			gui.text(10+i, 20, string.format("reset"), "red");
 		else 
 			rollDisplayValue(enemyCurHP, displayHealth, i);
 		end
@@ -109,12 +105,17 @@ function drawHealthBars(resetDisplay)
 				gui.box(33+xOffset, 114-8*aliveCount, 33+xOffset+dispWidth, 116-8*aliveCount, colorNormal); -- current HP
 			elseif (dispWidth > 0) then -- enemy took damage
 				gui.box(33+xOffset, 114-8*aliveCount, 33+xOffset+dispWidth, 116-8*aliveCount, "red"); -- scrolling red damage
-				gui.box(33+xOffset, 114-8*aliveCount, 33+xOffset+curWidth, 116-8*aliveCount, colorNormal); -- current HP
+				if (curWidth > 0) then
+					gui.box(33+xOffset, 114-8*aliveCount, 33+xOffset+curWidth, 116-8*aliveCount, colorNormal); -- current HP
+				end
 			end
 
 			-- gui.text(x, y, text, fillColor, borderColor);
 			gui.text(12+xOffset, 112-8*aliveCount, string.format("%05d", displayHealth[i]), colorZeroes, t_borderColor); -- leading zeroes
 			gui.text(12+xOffset, 112-8*aliveCount, string.format("%5d", displayHealth[i]), textColor, borderColor);
+			
+			-- show actual stats
+			--gui.text(60+xOffset, 112-8*aliveCount, string.format("%5d/%5d", enemyCurHP, enemyMaxHP), "gray", "black");
 		end
 	end
 
@@ -156,6 +157,9 @@ function drawHealthBars(resetDisplay)
 	end
 end
 
+framesToWait = 10;
+waitTimer = 0;
+
 while (true) do
 	--[[
 		Check game state and only show HUD during battles
@@ -171,17 +175,26 @@ while (true) do
 	--]]
 	gameState = memory.readbyte(0x20096e0)
 	inBattle = (gameState == 0x0A) or (gameState == 0x0B)
-	gui.text(10, 10, string.format("battle %s", tostring(inBattle)), "cyan");
-	resetDisplay = (lastInBattle == false and inBattle)
-	gui.text(10, 20, string.format("reset %s", tostring(resetDisplay)), "cyan");
 	
+	-- gui.text(10, 10, string.format("battle %s", tostring(inBattle)), "cyan");
+	-- gui.text(10, 20, string.format("reset %s", tostring(resetDisplay)), "cyan");
+	-- gui.text(10, 30, string.format("wait %s/%s", waitTimer, framesToWait), "cyan");
+	
+	-- Wait a few frames after battle starts for monster data to load
 	if (inBattle) then
-	
-		printGil();
-		drawHealthBars(resetDisplay);
+		if (waitTimer < framesToWait) then
+			waitTimer=waitTimer+1;
+		elseif(waitTimer == framesToWait) then
+			waitTimer=waitTimer+1;
+			drawHealthBars(true);
+		else
+			drawHealthBars(false);
+		end
+		
+	else
+		waitTimer = 0; -- reset for next battle
 	end
-	
-	lastInBattle = inBattle;
+	printGil();
 
 	--continue emulation
 	vba.frameadvance()
