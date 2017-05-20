@@ -3,10 +3,6 @@
 	For use with VBA-ReRecording's Lua Scripting
 
 	Developed by @TraceBullet for the FFV Four Job Fiesta
-
-	Known issues:
-		* HUD will appear when menu is opened
-		* Crazy HUD appears when job menu is opened
 --]]
 
 displayHealth = {-1,-1,-1,-1,-1,-1,-1,-1};
@@ -29,6 +25,8 @@ t_colorHurt 	= 0xaa000080;
  --colorZeroes  = 0x80808080;
 -- colorTotal 	= 0xffcc0080;
 t_colorYellow = 0xffff0080;
+
+lastInBattle = false;
 
 displayGil = {0};
 
@@ -66,9 +64,7 @@ function printGil()
 	gui.text(212, 0, "$"..string.format("%6d", displayGil[1]), colorTotal, borderColor);	-- total
 end
 
-while (true) do
-	printGil();
-
+function drawHealthBars(resetDisplay)
 	aliveCount = 0;
 	totalDisplayHealth = 0;
 	totalCurHealth = 0;
@@ -81,14 +77,19 @@ while (true) do
 		enemyMaxHP = memory.readword(maxHpAddr);
 
 		-- rolling health counter
-		rollDisplayValue(enemyCurHP, displayHealth, i);
+		if (resetDisplay) then
+			displayHealth[i] = 0;
+			gui.text(10+i, 20, string.format("reset"), "red");
+		else 
+			rollDisplayValue(enemyCurHP, displayHealth, i);
+		end
 		
 		-- update totals
 		totalDisplayHealth = totalDisplayHealth+displayHealth[i];
 		totalCurHealth = totalCurHealth+enemyCurHP;
 		totalMaxHealth = totalMaxHealth+enemyMaxHP;
 
-		if (displayHealth[i] > 0) then
+		if (displayHealth[i] > 0 and enemyMaxHP > 0) then
 			-- display individual HP counters in a column with no gaps
 			aliveCount = aliveCount+1
 			textColor = colorNormal;
@@ -103,8 +104,11 @@ while (true) do
 			curWidth = maxWidth * (enemyCurHP / enemyMaxHP);
 			dispWidth = maxWidth * (displayHealth[i] / enemyMaxHP);
 			gui.box(33+xOffset, 114-8*aliveCount, 33+xOffset+maxWidth, 116-8*aliveCount, t_colorHurt); -- background
-			gui.box(33+xOffset, 114-8*aliveCount, 33+xOffset+dispWidth, 116-8*aliveCount, "red"); -- scrolling red damage
-			if (curWidth > 0) then
+			if (curWidth > dispWidth and dispWidth > 0) then -- healing / start battle
+				gui.box(33+xOffset, 114-8*aliveCount, 33+xOffset+curWidth, 116-8*aliveCount, "green"); -- scrolling green healing
+				gui.box(33+xOffset, 114-8*aliveCount, 33+xOffset+dispWidth, 116-8*aliveCount, colorNormal); -- current HP
+			elseif (dispWidth > 0) then -- enemy took damage
+				gui.box(33+xOffset, 114-8*aliveCount, 33+xOffset+dispWidth, 116-8*aliveCount, "red"); -- scrolling red damage
 				gui.box(33+xOffset, 114-8*aliveCount, 33+xOffset+curWidth, 116-8*aliveCount, colorNormal); -- current HP
 			end
 
@@ -137,13 +141,47 @@ while (true) do
 	maxWidth = 60;
 	curWidth = maxWidth * (totalCurHealth / totalMaxHealth);
 	dispWidth = maxWidth * (totalDisplayHealth / totalMaxHealth);
-	if (dispWidth > 0) then
+	
+	if (curWidth > dispWidth and dispWidth > 0) then -- overall healing / start battle
+		gui.box(33+xOffset, 114, 33+xOffset+maxWidth, 116, t_colorHurt); -- background
+		gui.box(33+xOffset, 114, 33+xOffset+curWidth, 116, "green"); -- display
+		gui.box(33+xOffset, 114, 33+xOffset+dispWidth, 116, colorTotal); -- current
+	elseif (dispWidth > 0) then -- overall took damage
 		gui.box(33+xOffset, 114, 33+xOffset+maxWidth, 116, t_colorHurt); -- background
 		gui.box(33+xOffset, 114, 33+xOffset+dispWidth, 116, "red"); -- display
+		
+		if (curWidth > 0) then
+			gui.box(33+xOffset, 114, 33+xOffset+curWidth, 116, colorTotal); -- current
+		end
 	end
-	if (curWidth > 0) then
-		gui.box(33+xOffset, 114, 33+xOffset+curWidth, 116, colorTotal); -- current
+end
+
+while (true) do
+	--[[
+		Check game state and only show HUD during battles
+		0x020096E0 - current game state
+				
+		05 - Main World
+		07 - Menu
+		0A - Enemy Fight
+		0B - Enemy-in-a-box Fight
+		11 - loading battle FX
+				 
+		source: http://www.erick.guillen.com.mx/Codes/GBA%20Final%20Fantasy%20V%20Advance.txt
+	--]]
+	gameState = memory.readbyte(0x20096e0)
+	inBattle = (gameState == 0x0A) or (gameState == 0x0B)
+	gui.text(10, 10, string.format("battle %s", tostring(inBattle)), "cyan");
+	resetDisplay = (lastInBattle == false and inBattle)
+	gui.text(10, 20, string.format("reset %s", tostring(resetDisplay)), "cyan");
+	
+	if (inBattle) then
+	
+		printGil();
+		drawHealthBars(resetDisplay);
 	end
+	
+	lastInBattle = inBattle;
 
 	--continue emulation
 	vba.frameadvance()
