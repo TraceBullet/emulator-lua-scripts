@@ -176,6 +176,7 @@ while (true) do
 	gameState = memory.readbyte(0x20096e0)
 	inBattle = (gameState == 0x0A) or (gameState == 0x0B)
 	
+	-- gui.text(10, 10, string.format("state %x", gameState), "cyan");
 	-- gui.text(10, 10, string.format("battle %s", tostring(inBattle)), "cyan");
 	-- gui.text(10, 20, string.format("reset %s", tostring(resetDisplay)), "cyan");
 	-- gui.text(10, 30, string.format("wait %s/%s", waitTimer, framesToWait), "cyan");
