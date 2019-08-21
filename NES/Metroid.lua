@@ -37,6 +37,14 @@
 
 --------------------------------------------------------------------------------
 --
+-- User configuration options
+--
+local showUnvisitedRooms = false  -- true  = Display all unexplored map squares
+                                  -- false = Only show explored map squares
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+--
 -- We'll need some WRAM space to ourselves to store state information.
 --
 local collectedGearAddress = 0x7F7F
@@ -1092,15 +1100,16 @@ local function DrawMap(x0,y0,cols,rows,mapX,mapY,currentArea)
                         end
 
                     else
-                        --
                         -- Determine solid/border colors
-                        --
-                        local solid = mm_solid_unvisited
                         local border = "#FFFFFF"
+                        local solid = nil
                         if WasRoomVisited(mX, mY) then
                             solid = mm_solid_visited
-                            border = "#FFFFFF"
+                        elseif showUnvisitedRooms then
+                            solid = mm_solid_unvisited
                         end
+                        
+                        -- Show blinking cursor for current position
                         if
                             (mX == samusX and mY == samusY) and
                             AND(memory.readbyte(0x2D),0x08) ~= 0
@@ -1109,44 +1118,46 @@ local function DrawMap(x0,y0,cols,rows,mapX,mapY,currentArea)
                             border = "#FF0000"
                         end
 
-                        gui.gdoverlay(x,y,solid)
-
-                        --
-                        -- Room borders
-                        --
-                        if room.wallleft   then
-                            if room.doorleft or room.hdoorleft then
-                                gui.drawbox(x  ,y  ,x  ,y+2,border)
-                                gui.drawbox(x  ,y+5,x  ,y+7,border)
-                            else
-                                gui.drawbox(x  ,y  ,x  ,y+7,border)
+                        -- Draw map square if room has been visited or showUnvisitedRooms is enabled
+                        if solid ~= nil then
+                            gui.gdoverlay(x,y,solid)
+                            --
+                            -- Room borders
+                            --
+                            if room.wallleft   then
+                                if room.doorleft or room.hdoorleft then
+                                    gui.drawbox(x  ,y  ,x  ,y+2,border)
+                                    gui.drawbox(x  ,y+5,x  ,y+7,border)
+                                else
+                                    gui.drawbox(x  ,y  ,x  ,y+7,border)
+                                end
                             end
-                        end
-                        if room.wallright  then
-                            if room.doorright or room.hdoorright then
-                                gui.drawbox(x+7,y  ,x+7,y+2,border)
-                                gui.drawbox(x+7,y+5,x+7,y+7,border)
-                            else
-                                gui.drawbox(x+7,y  ,x+7,y+7,border)
+                            if room.wallright  then
+                                if room.doorright or room.hdoorright then
+                                    gui.drawbox(x+7,y  ,x+7,y+2,border)
+                                    gui.drawbox(x+7,y+5,x+7,y+7,border)
+                                else
+                                    gui.drawbox(x+7,y  ,x+7,y+7,border)
+                                end
                             end
-                        end
-                        if room.walltop    then gui.drawbox(x  ,y  ,x+7,y  ,border) end
-                        if room.wallbottom then gui.drawbox(x  ,y+7,x+7,y+7,border) end
+                            if room.walltop    then gui.drawbox(x  ,y  ,x+7,y  ,border) end
+                            if room.wallbottom then gui.drawbox(x  ,y+7,x+7,y+7,border) end
 
-                        --if room.elevator then DrawMetroidFont(x,y,"E") end
+                            --if room.elevator then DrawMetroidFont(x,y,"E") end
 
-                        --
-                        -- Dot rooms with powerups (that we haven't gotten yet)
-                        --
-                        if
-                            room.powerup and
-                            not HavePowerup(room.x, room.y, room.poweruptype)
-                        then
-                            gui.drawbox(x+3,y+3,x+4,y+4,border)
+                            --
+                            -- Dot rooms with powerups (that we haven't gotten yet)
+                            --
+                            if
+                                room.powerup and
+                                not HavePowerup(room.x, room.y, room.poweruptype)
+                            then
+                                gui.drawbox(x+3,y+3,x+4,y+4,border)
 
-                            if hover then
-                                local powerup = Powerup[room.poweruptype]
-                                if powerup then hovertext = powerup.name end
+                                if hover then
+                                    local powerup = Powerup[room.poweruptype]
+                                    if powerup then hovertext = powerup.name end
+                                end
                             end
                         end
 
